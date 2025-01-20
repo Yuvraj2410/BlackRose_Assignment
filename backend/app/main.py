@@ -3,12 +3,29 @@ from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from uuid import uuid4
 import time
+import random
+import sqlite3
+import threading
+from datetime import datetime
 
 app = FastAPI()
 
 # Store users and tokens
 users_db = {"user1": '123', 'user2':'321'} # Sample username-password pairs
 tokens_db = {} # store active session tokens
+
+# Initialize SQLite database
+db_connection = sqlite3.connect('random_numbers.db', check_same_thread=False)
+db_cursor = db_connection.cursor()
+
+# Create table to store random numbers
+db_cursor.execute("""
+CREATE TABLE IF NOT EXISTS random_numbers (
+                  timestamp TEXT PRIMARY KEY,
+                  value INTEGER
+                  )
+""")
+db_connection.commit()
 
 class TokenResponse(BaseModel):
     access_token : str
@@ -36,3 +53,26 @@ def protected_route(token: str):
         raise HTTPException(status_code=401, detail='Invalid or expired token')
 
     return {'message': f"Hello, {tokens_db[token]['username']}! This is a protected route."}
+
+# Function to generate and store random numbers
+def generate_random_numbers():
+    while True:
+        # Generate a random number
+        random_number = random.randint(1,100) # Random number between 1 and 100
+
+        # Get the current timestamp
+        timestamp = datetime.now().isoformat()
+
+        # Store in the database
+        try:
+            db_cursor.execute('INSERT INTO random_numbers (timestamp, value) VALUES (?,?)', (timestamp, random_number))
+            db_connection.commit()
+            print(f'stored: {timestamp} -> {random_number}')
+        except sqlite3.IntegrityError:
+            print(f'Duplicate timestamp detected: {timestamp}')
+
+        # Wait for 1 sec
+        threading.Event().wait(1)
+
+# Start random number generation in a background thread
+threading.Thread(target=generate_random_numbers, daemon=True).start()
