@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconnect
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from uuid import uuid4
@@ -7,6 +7,8 @@ import random
 import sqlite3
 import threading
 from datetime import datetime
+import asyncio
+
 
 app = FastAPI()
 
@@ -76,3 +78,28 @@ def generate_random_numbers():
 
 # Start random number generation in a background thread
 threading.Thread(target=generate_random_numbers, daemon=True).start()
+
+# WebSocket endpoint to stream random numbers
+@app.websocket('/ws/random_numbers')
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    try: 
+        while True:
+            # Fetch the latest random number from the database
+            conn = sqlite3.connect('random_numbers.db')
+            cursor = conn.cursor()
+            cursor.execute('SELECT timestamp, value FROM random_numbers WHERE timestamp = (SELECT MAX(timstamp) FROM random_numbers)')
+            latest = cursor.fetchone()
+            conn.close()
+
+            if latest:
+                timestamp, value = latest
+                # Send the random number and timestamp to the client 
+                await websocket.send_text(f'Timestamp: {timestamp}, Value: {value}')
+            else:
+                await websocket.send_text('No data available yet.')
+            
+            # Wait for 1 second before sending the next number
+            await asyncio.sleep(1)
+    except WebSocketDisconnect:
+        print('Client disconnected.')
