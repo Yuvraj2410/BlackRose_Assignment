@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconnect
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from uuid import uuid4
 import time
@@ -11,6 +12,14 @@ import asyncio
 
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins = ["http://localhost:3000"],
+    allow_credentials = True,
+    allow_methods = ['*'],
+    allow_headers = ['*'],
+)
 
 # Store users and tokens
 users_db = {"user1": '123', 'user2':'321'} # Sample username-password pairs

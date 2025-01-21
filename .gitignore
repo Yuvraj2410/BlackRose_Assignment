@@ -1,4 +1,15 @@
-# Python
+# Node modules (Frontend)
+frontend/node_modules/
+
+# Virtual environment (Backend)
 backend/venv/
-backend/__pycache__
-backend/*.pyc
+
+# SQLite Database
+backend/random_numbers.db
+
+# Python cache files
+*.pyc
+__pycache__/
+
+# Environment variables
+.env
